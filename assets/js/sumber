@@ -1,0 +1,86 @@
+Hi Racing Chocobo
+
+
+
+Well there ain't a direct way of doing it.. but if you are interested, i can share you one of the solutions i applied / added
+
+
+
+in Grocery_CRUD.php,
+
+
+
+under
+
+class Grocery_CRUD extends grocery_CRUD_States
+........
+
+//Add the variable to accept the callbacks as an array
+protected $post_ajax_callbacks                    = array();
+
+
+..................
+//in the same class - add some place a function
+    public function post_ajax_callbacks($callback) {
+        $this->post_ajax_callbacks[] = $callback;
+    }
+
+................................
+then under the following function
+protected function showList($ajax = false, $state_info = null)
+..........
+//add the following line
+$data->post_ajax_callbacks     = $this->post_ajax_callbacks;        //This avails the list of callbacks
+
+Now in the assets/grocery_crud/themes/flexigrid/js/flexigrid.js
+
+//Under the following code
+var ajax_list_info_url = $(this).attr('data-ajax-list-info-url');
+
+        $(this).ajaxSubmit({
+........
+                 this_form.ajaxSubmit({
+                     success:    function(data){
+                        this_form.closest('.flexigrid').find('.ajax_list').html(data);
+                        call_fancybox();
+                        execPostListCallbacks();      //Add this line here - this will ensure a callback to the functions that are registered to be called post ajax list.
+
+in the list_template.php    ... add the following code
+
+  var callback_queue = new Array();
+  <?php if(isset($post_ajax_callbacks) && count($post_ajax_callbacks) > 0) {
+    foreach($post_ajax_callbacks as $callback) {
+  ?>
+  callback_queue.push("<?php echo $callback?>");
+  <?php
+    }
+  } ?>
+
+  function execPostListCallbacks() {
+    for(i=0; i < callback_queue.length; i++) {
+      console.log("Making a callback to - " + callback_queue[i]);
+      var fn = eval(callback_queue[i]);
+      fn;
+    }
+  }
+
+Now in your controller - when u need to call back a function .. u can write it into a js file and add that file using $crud->set_js
+
+//Example  - assets/js/callback.js
+function print_message() {
+  console.log("Yes i got called in");
+  alert("This is a test callback");
+}
+
+//Now in the controller
+......
+$crud->set_js('assets/js/callback.js');      // here i add / include the js file where the function to be called is in....
+$crud->post_ajax_callbacks('print_message()');      // Here i register the function to be called back...
+
+Now - this is not restrcited / limited to a single call.. you can register such - multiple calls and avail the benefit from the same
+
+
+
+
+
+Happy GCing :)
